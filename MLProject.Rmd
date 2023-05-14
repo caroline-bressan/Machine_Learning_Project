@@ -1,0 +1,151 @@
+---
+title: "Machine Learning Project"
+output: html_document
+date: "2023-05-12"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Project
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+The training data for this project are available here: [https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv]
+
+The test data are available here: [https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv]
+
+The data for this project come from this source: [http://groupware.les.inf.puc-rio.br/har]. 
+
+## Data
+
+Our outcome variable is classe, a factor variable. For this data set, “participants were asked to perform one set of 10 repetitions of the Unilateral Dumbbell Biceps Curl in 5 different fashions: 
+
+-(Class A) exactly according to the specification;
+-(Class B) throwing the elbows to the front; 
+-(Class C) lifting the dumbbell only halfway; 
+-(Class D) lowering the dumbbell only halfway; 
+-(Class E) throwing the hips to the front.
+
+Two models will be tested using decision tree and random forest. The model with the highest accuracy will be chosen as the final model.
+
+## Cross Validation
+
+Cross-validation will be performed by subsampling our training data set randomly without replacement into 2 subsamples: 
+-subTraining data (75% of the original Training data set) and 
+-subTesting data (25%). 
+
+The models will be fitted on the subTraining data set, and tested on the subTesting data. Once the most accurate model is choosen, it will be tested on the original Testing data set.
+
+## Loading Data and Installing Packages
+
+The outcome variable “classe” is a factor variable. It will be splited the Training dataset into TrainTrainingSet and TestTrainingSet datasets.
+
+Install packages and load the required libraries:
+
+```{r}
+library(lattice)
+library(ggplot2)
+library(caret)
+library(randomForest)
+library(rpart)
+library(rpart.plot)
+```
+
+Now, it is important to load the Data and clean the data:
+
+```{r}
+set.seed(1234)
+trainRaw <- read.csv("C:/Users/caroline/Documents/R/ML/pml-training.csv",na.strings=c("NA","#DIV/0!", ""))
+testRaw <- read.csv("C:/Users/caroline/Documents/R/ML/pml-testing.csv",na.strings=c("NA","#DIV/0!", ""))
+```
+
+## Data processing 
+
+In this section the data will be processed. 
+First the NA values will be deleted. 
+
+```{r}
+trainRaw <- trainRaw[, colSums(is.na(trainRaw)) == 0]
+testRaw <- testRaw[, colSums(is.na(testRaw)) == 0 ]
+``` 
+
+Now, it will be shown the table of each different fashion, all the classes and the quantity of each one. 
+
+```{r}
+table(trainRaw$classe)
+```
+
+Then it will be deleted the irrelevant variables to this current project:
+(1)user_name,
+(2(raw_timestamp_part_1,
+(3)raw_timestamp_part_,
+(4)2 cvtd_timestamp,
+(5)new_window, 
+(6)num_window 
+This represents the columns 1 to 7.
+
+```{r}
+trainRawset <- trainRaw[,-c(1:7)]
+testRawset <- testRaw[,-c(1:7)]
+``` 
+
+## Partition the data 
+
+The partition will be 75% of the training dataset into training and the remaining 25% to testing.
+
+```{r}
+trainset <- createDataPartition(trainRawset$classe, p=0.75, list=FALSE)
+trainData <- trainRawset[trainset, ] 
+testData <- trainRawset[-trainset, ]
+```
+
+## Model 1
+
+First it will be shown the first model, the decision tree. 
+
+```{r}
+model1 <- rpart(classe ~ ., data=trainData, method="class")
+predict1 <- predict(model1, testData, type = "class")
+# Plot the Decision Tree
+rpart.plot(model1, main="Classification Tree", extra=102, under=TRUE, faclen=0)
+```
+
+The results of the test on the TestData data set:
+
+```{r}
+confusionMatrix(predict1,as.factor(testData$classe))
+``` 
+
+Accuracy is ~73% Estimated Out-of-Sample Error: ~0.5%.
+
+## Model 2
+
+The second model it will be the Random Forest.
+
+```{r}
+model2 <- randomForest(as.factor(classe) ~. , data=trainData, method="class")
+prediction2 <- predict(model2, testData)
+``` 
+
+Test results on TestTrainingSet data set:
+
+```{r}
+confusionMatrix(prediction2, as.factor(testData$classe))
+``` 
+
+Accuracy: ~99% Estimated Out-of-Sample Error: ~0.5%
+
+## Decision of the model
+
+Random Forest algorithm performed better than Decision Trees. Accuracy for Random Forest model was 0.995 (95% CI: (0.993, 0.997)) compared to Decision Tree model with 0.739 (95% CI: (0.727, 0.752)). That is why the Random Forests model is choosen model.
+
+## Aplying the choosen model to the original 
+
+Applying the model Random Forests to the original testing data set downloaded from the data source. 
+
+```{r}
+result <- predict(model2, testRawset,type = "class")
+result
+``` 
